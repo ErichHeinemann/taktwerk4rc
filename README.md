@@ -36,7 +36,9 @@ Footswitch  Start / Stop    GPIO 6          Internal Pullup (Button closes to GN
 USB Host  D- / D+           GPIO 19 / 20    reserved für RC-600 USB-HOST
 NeoPixel LED  DATA          GPIO 48         Onboard LED / Metronom
 
-
+!! NEEDED Modifications on the ESp32-S3-Hardware !!!
+close or bridge the PADS USB-OTG under the board to enable the USB-OTG-Function
+close or bridge the PADS 5V In/Out on the top of the board to enable 5 Volt-PIN to create 5 Volts for the SD-Card-Reader
 
 # Taktwerk MIDI-File extractor
 Check the file taktwerk_editor.html locally, it contains the Code for the Drum-Editor.
