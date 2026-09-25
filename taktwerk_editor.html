@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taktwerk - Native MIDI Inspector</title>
+
+        <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #eceff1;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #263238;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        h1 { color: #80cbc4; margin-top: 0; }
+        .drop-zone {
+            border: 2px dashed #80cbc4;
+            border-radius: 6px;
+            padding: 25px;
+            text-align: center;
+            background: #37474f;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .drop-zone:hover { background: #455a64; }
+        .track-info {
+            background: #1e272c;
+            border: 1px solid #455a64;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .track-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+        .track-item {
+            background: #37474f;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+        }
+        .channel-selector {
+            margin: 15px 0;
+            background: #37474f;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        select {
+            background: #263238;
+            color: #80cbc4;
+            border: 1px solid #546e7a;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .measures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 12px;
+            margin: 20px 0;
+            max-height: 350px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+        .measure-card {
+            background: #37474f;
+            border: 2px solid #546e7a;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        .measure-card:hover { border-color: #80cbc4; }
+        .measure-card.selected {
+            background: #00695c;
+            border-color: #80cbc4;
+            color: #fff;
+        }
+        .export-panel {
+            background: #37474f;
+            padding: 15px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 6px;
+            background: #263238;
+            border: 1px solid #546e7a;
+            color: #fff;
+            border-radius: 4px;
+        }
+        button {
+            background: #80cbc4;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+/* ...existing code... */
+
+        .drum-grid-panel {
+            background: #1e272c;
+            border: 1px solid #455a64;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+
+        .drum-grid {
+            display: grid;
+            grid-template-columns: 130px repeat(64, minmax(12px, 1fr));
+            min-width: 900px;
+            gap: 2px;
+            align-items: center;
+        }
+
+        .drum-grid-cell {
+            min-height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #37474f;
+            border-radius: 3px;
+            font-size: 0.75em;
+        }
+
+        .drum-grid-header {
+            color: #80cbc4;
+            font-weight: bold;
+        }
+
+        .drum-grid-step-header {
+            grid-column: span 4;
+        }
+
+        .drum-grid-major {
+            border-left: 1px solid #546e7a;
+        }
+
+        .drum-grid-label {
+            justify-content: flex-start;
+            padding-left: 8px;
+            color: #eceff1;
+        }
+
+        .drum-grid-hit {
+            color: white;
+            font-weight: bold;
+        }
+
+        .drum-grid-hit.velocity-very-low { background: #1e3a5f; }
+        .drum-grid-hit.velocity-low { background: #1b5e20; }
+        .drum-grid-hit.velocity-medium { background: #43a047; }
+        .drum-grid-hit.velocity-high { background: #fdd835; color: #111; }
+        .drum-grid-hit.velocity-very-high { background: #fb8c00; color: #111; }
+        .drum-grid-hit.velocity-maximum { background: #e53935; }
+
+        .drum-context-menu {
+            position: fixed;
+            z-index: 10;
+            display: none;
+            min-width: 220px;
+            padding: 12px;
+            background: #263238;
+            border: 1px solid #80cbc4;
+            border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .drum-context-menu.visible { display: grid; gap: 9px; }
+        .drum-context-menu label { display: grid; gap: 4px; color: #eceff1; }
+        .drum-context-menu input,
+        .drum-context-menu select { width: 100%; box-sizing: border-box; }
+        .drum-context-menu-actions { display: flex; gap: 8px; }
+        .drum-context-menu-actions button { flex: 1; }
+        .drum-context-menu-delete { background: #e57373; }
+
+        .velocity-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            margin-top: 12px;
+            color: #b0bec5;
+            font-size: 0.8em;
+        }
+
+        .velocity-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .velocity-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .velocity-swatch.velocity-very-low { background: #1e3a5f; }
+        .velocity-swatch.velocity-low { background: #1b5e20; }
+        .velocity-swatch.velocity-medium { background: #43a047; }
+        .velocity-swatch.velocity-high { background: #fdd835; }
+        .velocity-swatch.velocity-very-high { background: #fb8c00; }
+        .velocity-swatch.velocity-maximum { background: #e53935; }
+
+        .drum-grid-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .tempo-panel {
+            background: #37474f;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+/* ...existing code... */
+
+        button:hover { background: #4db6ac; }
+        .info-text { font-size: 0.9em; color: #b0bec5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Taktwerk - Standalone MIDI Inspector</h1>
+    <p class="info-text">Liest MIDI Formate 0 & 1 ohne externe Abhängigkeiten direkt aus.</p>
+
+    <div class="drop-zone" id="dropZone">
+        <p>MIDI-Datei hierhin ziehen oder <strong>klicken</strong> zum Auswählen</p>
+        <input type="file" id="fileInput" accept=".mid,.midi" style="display: none;">
+    </div>
+
+    <div id="analysisSection" style="display: none;">
+        <div class="track-info">
+            <strong id="formatDisplay">Format: -</strong>
+            <ul class="track-list" id="trackListDisplay"></ul>
+        </div>
+
+        <div class="channel-selector">
+            <label for="channelSelect"><strong>Zu verarbeitender MIDI-Kanal: </strong></label>
+            <select id="channelSelect" onchange="filterNotesByChannel()">
+            </select>
+        </div>
+
+        <div class="tempo-panel">
+            <label for="tempoInput">Tempo:</label>
+            <input id="tempoInput" type="number" min="20" max="300" value="120">
+            <span>BPM</span>
+            <span id="midiTempoDisplay"></span>
+        </div>
+
+        <h3>Takte auswählen:</h3>
+        <div class="measures-grid" id="measuresGrid"></div>
+
+<!-- ...existing code... -->
+
+        <div class="drum-grid-panel" id="drumGridPanel" style="display: none;">
+            <div class="drum-grid-heading">
+                <h3 id="drumGridTitle">Drum Grid</h3>
+                <button id="playDrumGridBtn" type="button">Play Grid</button>
+            </div>
+            <div class="drum-grid" id="drumGrid"></div>
+            <div class="drum-context-menu" id="drumContextMenu">
+                <label>
+                    Instrument
+                    <select id="drumContextInstrument"></select>
+                </label>
+                <label>
+                    Unterteilung (1-64)
+                    <input id="drumContextSubdivision" type="number" min="1" max="64" step="1">
+                </label>
+                <label>
+                    Velocity (0-127)
+                    <input id="drumContextVelocity" type="number" min="0" max="127" step="1">
+                </label>
+                <div class="drum-context-menu-actions">
+                    <button id="drumContextApply" type="button">Übernehmen</button>
+                    <button id="drumContextDelete" class="drum-context-menu-delete" type="button">Löschen</button>
+                </div>
+            </div>
+            <div class="velocity-legend" aria-label="Velocity-Legende">
+                <span class="velocity-legend-item"><span class="velocity-swatch velocity-very-low"></span>0-29</span>
+                <span class="velocity-legend-item"><span class="velocity-swatch velocity-low"></span>30-49</span>
+                <span class="velocity-legend-item"><span class="velocity-swatch velocity-medium"></span>50-74</span>
+                <span class="velocity-legend-item"><span class="velocity-swatch velocity-high"></span>75-99</span>
+                <span class="velocity-legend-item"><span class="velocity-swatch velocity-very-high"></span>100-109</span>
+                <span class="velocity-legend-item"><span class="velocity-swatch velocity-maximum"></span>110-127</span>
+            </div>
+        </div>
+
+<!-- ...existing code... -->
+
+        <div class="export-panel">
+            <label><input type="radio" name="fileType" value="loop" checked> loop-</label>
+            <label><input type="radio" name="fileType" value="fill"> fill-</label>
+            <input type="number" id="fileNumber" value="1" min="1" max="99">
+            <span>.mid</span>
+
+            <button id="exportBtn" onclick="exportSelectedMeasures()">Als MIDI Exportieren</button>
+        </div>
+    </div>
+</div>
+
+<script>
+
+// Web Audio API Kontext
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+function loadDrumPreset(noteNumber) {
+    if (drumPresetPromises[noteNumber]) return drumPresetPromises[noteNumber];
+
+    if (!webAudioFontPlayer) webAudioFontPlayer = new WebAudioFontPlayer();
+
+    const presetName = `_drum_${noteNumber}_0_SBLive_sf2`;
+    const presetUrl =
+        `https://surikov.github.io/webaudiofontdata/sound/128${noteNumber}_0_SBLive_sf2.js`;
+
+    drumPresetPromises[noteNumber] = new Promise((resolve, reject) => {
+        try {
+            webAudioFontPlayer.loader.startLoad(audioCtx, presetUrl, presetName);
+            webAudioFontPlayer.loader.waitLoad(() => {
+                const preset = window[presetName];
+
+                if (!preset) {
+                    reject(new Error(`Drum-Preset ${noteNumber} konnte nicht geladen werden.`));
+                    return;
+                }
+
+                drumPresets[noteNumber] = preset;
+                resolve(preset);
+            });
+        } catch (error) {
+            reject(error);
+        }
+    });
+
+    return drumPresetPromises[noteNumber];
+}
+
+async function playDrumSound(noteNumber, time, velocity = 100) {
+    if (!audioCtx) return;
+
+    const volume = Math.max(0.05, Math.min(1, velocity / 127));
+    let preset = drumPresets[noteNumber];
+
+    if (noteNumber >= 35 && noteNumber <= 81) {
+        try {
+            preset = preset || await loadDrumPreset(noteNumber);
+        } catch (error) {
+            playDrumSoundAlt(noteNumber, time, volume);
+            return;
+        }
+    }
+
+    if (preset) {
+        webAudioFontPlayer.queueWaveTable(
+            audioCtx,
+            audioCtx.destination,
+            preset,
+            time,
+            noteNumber,
+            1.5,
+            volume
+        );
+        return;
+    }
+
+    playDrumSoundAlt(noteNumber, time, volume);
+}
+
+
+// Synthetischer GM-Drum Synth
+function playDrumSoundAlt(noteNumber, time, volume = 1) {
+    if (!audioCtx) return;
+
+    // Kick Drum (Bass Drum)
+    if (noteNumber === 35 || noteNumber === 36) {
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(120, time);
+        osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.15);
+        gain.gain.setValueAtTime(volume, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.15);
+    } 
+    // Snare Drum
+    else if (noteNumber === 38 || noteNumber === 40) {
+        // Noise
+        let bufferSize = audioCtx.sampleRate * 0.1;
+        let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        let output = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+        let noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        let noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 1000;
+        
+        let noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.7 * volume, time);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+        noise.start(time);
+
+        // Tone
+        let osc = audioCtx.createOscillator();
+        let oscGain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(180, time);
+        oscGain.gain.setValueAtTime(0.5 * volume, time);
+        oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.08);
+        osc.connect(oscGain);
+        oscGain.connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.08);
+    } 
+    // Hi-Hat (Closed / Open)
+    else if (noteNumber === 42 || noteNumber === 44 || noteNumber === 46) {
+        let bufferSize = audioCtx.sampleRate * (noteNumber === 46 ? 0.2 : 0.05);
+        let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        let output = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+        let noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        let filter = audioCtx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 5000;
+
+        let gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.3 * volume, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + (noteNumber === 46 ? 0.2 : 0.05));
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+        noise.start(time);
+    } 
+    // Default Fallback für übrige Drums (Toms, Cymbals etc.)
+    else {
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200, time);
+        gain.gain.setValueAtTime(0.4 * volume, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.05);
+    }
+}
+
+// filepath: /Users/erichheinemann/Documents/taktwerk/taktwerkeditor/taktwerk_editor.html
+async function playMeasure(measureIdx) {
+    initAudio();
+
+    const notes = measuresMap[measureIdx] || [];
+    if (notes.length === 0) return;
+
+    try {
+        const presetNotes = [...new Set(notes
+            .map(note => note.noteNumber)
+            .filter(noteNumber => noteNumber >= 35 && noteNumber <= 81))];
+
+        await Promise.all(presetNotes.map(noteNumber =>
+            loadDrumPreset(noteNumber).catch(() => null)
+        ));
+
+        const startTick =
+            notes[0].tick - (notes[0].tick % ticksPerMeasure);
+
+        const secondsPerTick =
+            (60 / playbackTempoBpm) / timeDivision;
+
+        const now = audioCtx.currentTime + 0.05;
+
+        notes.forEach(note => {
+            const offsetTicks = note.tick - startTick;
+            const noteTime = now + offsetTicks * secondsPerTick;
+
+            playDrumSound(
+                note.noteNumber,
+                noteTime,
+                note.velocity
+            );
+        });
+    } catch (error) {
+        alert('Drum-Sound konnte nicht geladen werden: ' + error.message);
+    }
+}
+
+
+
+</script>
+
+<script>
+    let extractedNotes = [];
+    let selectedChannelNotes = [];
+    let ticksPerMeasure = 1920;
+    let timeDivision = 480;
+    let measuresMap = {};
+    let selectedMeasures = new Set();
+    let displayedDrumMeasure = null;
+    let gridLoopTimer = null;
+    let gridLoopPlaying = false;
+
+    let webAudioFontPlayer = null;
+    const drumPresets = {};
+    const drumPresetPromises = {};
+    
+    let midiTempoBpm = 120;
+    let playbackTempoBpm = 120;
+    
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const analysisSection = document.getElementById('analysisSection');
+    const trackListDisplay = document.getElementById('trackListDisplay');
+    const channelSelect = document.getElementById('channelSelect');
+    const measuresGrid = document.getElementById('measuresGrid');
+    const formatDisplay = document.getElementById('formatDisplay');
+
+
+    const tempoInput = document.getElementById('tempoInput');
+    const midiTempoDisplay = document.getElementById('midiTempoDisplay');
+    
+    tempoInput.addEventListener('change', () => {
+        playbackTempoBpm = Math.max(20, Math.min(300, Number(tempoInput.value) || 120));
+        tempoInput.value = playbackTempoBpm;
+    });    
+
+// ...existing code...
+
+    const drumGrid = document.getElementById('drumGrid');
+    const drumGridPanel = document.getElementById('drumGridPanel');
+    const drumGridTitle = document.getElementById('drumGridTitle');
+    const playDrumGridBtn = document.getElementById('playDrumGridBtn');
+    const drumContextMenu = document.getElementById('drumContextMenu');
+    const drumContextInstrument = document.getElementById('drumContextInstrument');
+    const drumContextSubdivision = document.getElementById('drumContextSubdivision');
+    const drumContextVelocity = document.getElementById('drumContextVelocity');
+    const drumContextApply = document.getElementById('drumContextApply');
+    const drumContextDelete = document.getElementById('drumContextDelete');
+    let drumContextState = null;
+
+    function stopGridLoop() {
+        gridLoopPlaying = false;
+        if (gridLoopTimer !== null) {
+            clearTimeout(gridLoopTimer);
+            gridLoopTimer = null;
+        }
+        playDrumGridBtn.textContent = 'Play Grid';
+    }
+
+    async function playGridLoopIteration() {
+        if (!gridLoopPlaying || displayedDrumMeasure === null) {
+            stopGridLoop();
+            return;
+        }
+
+        await playMeasure(displayedDrumMeasure);
+
+        if (!gridLoopPlaying || displayedDrumMeasure === null) {
+            stopGridLoop();
+            return;
+        }
+
+        const measureDuration =
+            ticksPerMeasure * (60 / playbackTempoBpm) / timeDivision * 1000;
+        gridLoopTimer = setTimeout(playGridLoopIteration, Math.max(50, measureDuration));
+    }
+
+    function playCurrentDrumGrid() {
+        if (gridLoopPlaying) {
+            stopGridLoop();
+            return;
+        }
+
+        if (displayedDrumMeasure === null) return;
+
+        gridLoopPlaying = true;
+        playDrumGridBtn.textContent = 'Stop Grid';
+        playGridLoopIteration();
+    }
+
+    async function playDrumGridNote(note) {
+        initAudio();
+
+        if (note.noteNumber >= 35 && note.noteNumber <= 81) {
+            try {
+                await loadDrumPreset(note.noteNumber);
+            } catch (error) {
+                playDrumSoundAlt(note.noteNumber, audioCtx.currentTime + 0.05,
+                    Math.max(0.05, Math.min(1, note.velocity / 127)));
+                return;
+            }
+        }
+
+        playDrumSound(note.noteNumber, audioCtx.currentTime + 0.05, note.velocity);
+    }
+
+    playDrumGridBtn.addEventListener('click', playCurrentDrumGrid);
+
+    const drumNames = {
+        35: 'Acoustic Bass Drum',
+        36: 'Bass Drum 1',
+        37: 'Side Stick',
+        38: 'Acoustic Snare',
+        39: 'Hand Clap',
+        40: 'Electric Snare',
+        41: 'Low Floor Tom',
+        42: 'Closed Hi-Hat',
+        43: 'High Floor Tom',
+        44: 'Pedal Hi-Hat',
+        45: 'Low Tom',
+        46: 'Open Hi-Hat',
+        47: 'Low-Mid Tom',
+        48: 'Hi-Mid Tom',
+        49: 'Crash Cymbal 1',
+        50: 'High Tom',
+        51: 'Ride Cymbal 1',
+        52: 'Chinese Cymbal',
+        53: 'Ride Bell',
+        54: 'Tambourine',
+        55: 'Splash Cymbal',
+        56: 'Cowbell',
+        57: 'Crash Cymbal 2',
+        58: 'Vibraslap',
+        59: 'Ride Cymbal 2',
+        60: 'Hi Bongo',
+        61: 'Low Bongo',
+        62: 'Mute Hi Conga',
+        63: 'Open Hi Conga',
+        64: 'Low Conga',
+        65: 'High Timbale',
+        66: 'Low Timbale',
+        67: 'High Agogo',
+        68: 'Low Agogo',
+        69: 'Cabasa',
+        70: 'Maracas',
+        71: 'Short Whistle',
+        72: 'Long Whistle',
+        73: 'Short Guiro',
+        74: 'Long Guiro',
+        75: 'Claves',
+        76: 'Hi Wood Block',
+        77: 'Low Wood Block',
+        78: 'Mute Cuica',
+        79: 'Open Cuica',
+        80: 'Mute Triangle',
+        81: 'Open Triangle'
+    };
+
+    Object.entries(drumNames).forEach(([noteNumber, name]) => {
+        const option = document.createElement('option');
+        option.value = noteNumber;
+        option.textContent = `${noteNumber}: ${name}`;
+        drumContextInstrument.appendChild(option);
+    });
+
+    function getVelocityClass(velocity) {
+        if (velocity >= 110) return 'velocity-maximum';
+        if (velocity >= 100) return 'velocity-very-high';
+        if (velocity >= 75) return 'velocity-high';
+        if (velocity >= 50) return 'velocity-medium';
+        if (velocity >= 30) return 'velocity-low';
+        return 'velocity-very-low';
+    }
+
+    function closeDrumContextMenu() {
+        drumContextMenu.classList.remove('visible');
+        drumContextState = null;
+    }
+
+    function openDrumContextMenu(event, measureIdx, noteNumber, subdivision, note) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        drumContextState = { measureIdx, noteNumber, subdivision, note };
+        drumContextInstrument.value = String(note ? note.noteNumber : noteNumber);
+        drumContextSubdivision.value = String(subdivision + 1);
+        drumContextVelocity.value = String(note ? note.velocity : 100);
+        drumContextDelete.hidden = !note;
+        drumContextMenu.classList.add('visible');
+
+        const left = Math.min(event.clientX, window.innerWidth - drumContextMenu.offsetWidth - 8);
+        const top = Math.min(event.clientY, window.innerHeight - drumContextMenu.offsetHeight - 8);
+        drumContextMenu.style.left = `${Math.max(8, left)}px`;
+        drumContextMenu.style.top = `${Math.max(8, top)}px`;
+    }
+
+    function refreshEditedMeasure(measureIdx) {
+        renderMeasures();
+        selectedMeasures.add(measureIdx);
+        const card = Array.from(measuresGrid.children).find(item =>
+            item.querySelector('strong') &&
+            item.querySelector('strong').textContent === `Takt ${measureIdx}`
+        );
+        if (card) card.classList.add('selected');
+
+        if (measuresMap[measureIdx] && measuresMap[measureIdx].length) {
+            renderDrumGrid(measureIdx);
+        } else {
+            drumGridPanel.style.display = 'none';
+        }
+    }
+
+    drumContextApply.addEventListener('click', () => {
+        if (!drumContextState) return;
+
+        const { measureIdx, note } = drumContextState;
+        const noteNumber = Number(drumContextInstrument.value);
+        const subdivision = Math.max(1, Math.min(64, Number(drumContextSubdivision.value) || 1));
+        const velocity = Math.max(0, Math.min(127, Number(drumContextVelocity.value) || 0));
+        const measureStart = (measureIdx - 1) * ticksPerMeasure;
+        const subdivisionTicks = ticksPerMeasure / 64;
+        const tick = Math.round(measureStart + (subdivision - 1) * subdivisionTicks);
+
+        if (note) {
+            note.noteNumber = noteNumber;
+            note.tick = tick;
+            note.velocity = velocity;
+            measuresMap[measureIdx].sort((a, b) => a.tick - b.tick);
+        } else {
+            const newNote = {
+                tick,
+                noteNumber,
+                velocity,
+                channel: Number(channelSelect.value)
+            };
+            extractedNotes.push(newNote);
+            selectedChannelNotes.push(newNote);
+            if (!measuresMap[measureIdx]) measuresMap[measureIdx] = [];
+            measuresMap[measureIdx].push(newNote);
+            measuresMap[measureIdx].sort((a, b) => a.tick - b.tick);
+        }
+
+        const editedMeasure = measureIdx;
+        closeDrumContextMenu();
+        refreshEditedMeasure(editedMeasure);
+    });
+
+    drumContextDelete.addEventListener('click', () => {
+        if (!drumContextState || !drumContextState.note) return;
+
+        const { measureIdx, note } = drumContextState;
+        extractedNotes = extractedNotes.filter(item => item !== note);
+        selectedChannelNotes = selectedChannelNotes.filter(item => item !== note);
+        measuresMap[measureIdx] = (measuresMap[measureIdx] || [])
+            .filter(item => item !== note);
+
+        const editedMeasure = measureIdx;
+        closeDrumContextMenu();
+        refreshEditedMeasure(editedMeasure);
+    });
+
+    drumContextMenu.addEventListener('click', event => event.stopPropagation());
+    document.addEventListener('click', closeDrumContextMenu);
+
+// ...existing code...
+
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => e.preventDefault());
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const buffer = new Uint8Array(e.target.result);
+                parseBinaryMidi(buffer);
+            } catch (err) {
+                alert("Fehler beim Lesen der MIDI-Datei: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    let tempoFoundInMidi = false;
+
+    // EIGENER NATIVER BINÄR-PARSER (Komplett unabhängig)
+        function parseBinaryMidi(data) {
+        tempoFoundInMidi = false;
+        midiTempoBpm = 120;
+        playbackTempoBpm = 120;
+
+        let p = 0;
+        
+        // Header MThd prüfen
+        if (data[0] !== 0x4D || data[1] !== 0x54 || data[2] !== 0x68 || data[3] !== 0x64) {
+            throw new Error("Ungültiges MIDI-Format (MThd nicht gefunden).");
+        }
+
+        const format = (data[8] << 8) | data[9];
+        const numTracks = (data[10] << 8) | data[11];
+        timeDivision = (data[12] << 8) | data[13];
+        ticksPerMeasure = timeDivision * 4; // Default 4/4
+
+        p = 14; // Start nach Header
+
+        extractedNotes = [];
+        trackListDisplay.innerHTML = '';
+        const foundChannels = new Set();
+
+        formatDisplay.textContent = `MIDI Format: ${format} | Tracks: ${numTracks} | PPQN: ${timeDivision}`;
+
+        for (let t = 0; t < numTracks; t++) {
+            if (p >= data.length) break;
+
+            // Track Header MTrk suchen
+            if (data[p] === 0x4D && data[p+1] === 0x54 && data[p+2] === 0x72 && data[p+3] === 0x6B) {
+                const trackLen = (data[p+4] << 24) | (data[p+5] << 16) | (data[p+6] << 8) | data[p+7];
+                p += 8;
+                const track_end = p + trackLen;
+
+                let currentTick = 0;
+                let lastStatus = 0;
+                let noteCountInTrack = 0;
+                const channelsInTrack = new Set();
+
+                while (p < track_end && p < data.length) {
+                    // Variable-Length Delta-Time
+                    let delta = 0;
+                    while (true) {
+                        let b = data[p++];
+                        delta = (delta << 7) | (b & 0x7F);
+                        if (!(b & 0x80)) break;
+                    }
+                    currentTick += delta;
+
+                    // Event Typ / Running Status
+                    let status = data[p];
+                    if (status >= 0x80) {
+                        p++;
+                        lastStatus = status;
+                    } else {
+                        status = lastStatus; // Running Status wiederverwenden
+                    }
+
+                    const eventType = status & 0xF0;
+                    const channel = (status & 0x0F) + 1; // 1 bis 16
+
+                    if (eventType === 0x90 || eventType === 0x80) {
+                        const noteNum = data[p++];
+                        const velocity = data[p++];
+
+                        if (eventType === 0x90 && velocity > 0) {
+                            channelsInTrack.add(channel);
+                            foundChannels.add(channel);
+                            noteCountInTrack++;
+
+                            extractedNotes.push({
+                                tick: currentTick,
+                                noteNumber: noteNum,
+                                velocity: velocity,
+                                channel: channel
+                            });
+                        }
+                    } else if (eventType === 0xA0 || eventType === 0xB0 || eventType === 0xE0) {
+                        p += 2; // Data Bytes überspringen
+                    } else if (eventType === 0xC0 || eventType === 0xD0) {
+                        p += 1;
+
+                    // filepath: /Users/erichheinemann/Documents/taktwerk/taktwerkeditor/taktwerk_editor.html
+                    } else if (status === 0xFF) { // Meta Event
+                        const metaType = data[p++];
+                        let len = 0;
+
+                        while (true) {
+                            let b = data[p++];
+                            len = (len << 7) | (b & 0x7F);
+                            if (!(b & 0x80)) break;
+                        }
+
+                        if (metaType === 0x51 && len === 3 && !tempoFoundInMidi) {
+                            const microsecondsPerQuarter =
+                                (data[p] << 16) |
+                                (data[p + 1] << 8) |
+                                data[p + 2];
+
+                            if (microsecondsPerQuarter > 0) {
+                                midiTempoBpm = 60000000 / microsecondsPerQuarter;
+                                playbackTempoBpm = Math.round(midiTempoBpm);
+                                tempoFoundInMidi = true;
+                            }
+                        }
+
+                        p += len;
+
+                    } else if (status === 0xF0 || status === 0xF7) { // SysEx
+                        let len = 0;
+                        while (true) {
+                            let b = data[p++];
+                            len = (len << 7) | (b & 0x7F);
+                            if (!(b & 0x80)) break;
+                        }
+                        p += len;
+                    }
+                }
+
+                // Spur anzeigen
+                const li = document.createElement('li');
+                li.className = 'track-item';
+                const chStr = Array.from(channelsInTrack).sort((a,b)=>a-b).join(', ') || 'Keine Noten';
+                li.innerHTML = `
+                    <span><strong>Spur ${t + 1}</strong></span>
+                    <span>${noteCountInTrack} Noten | <strong>Kanäle: ${chStr}</strong></span>
+                `;
+                trackListDisplay.appendChild(li);
+
+                p = track_end; // Sicherstellen, dass wir am Ende der Spur stehen
+            } else {
+                p++;
+            }
+        }
+
+        // Dropdown füllen
+        channelSelect.innerHTML = '';
+        const sortedChannels = Array.from(foundChannels).sort((a, b) => a - b);
+
+        if (sortedChannels.length === 0) {
+            alert("Keine Noten-Events in dieser Datei gefunden!");
+            return;
+        }
+
+        sortedChannels.forEach(ch => {
+            const opt = document.createElement('option');
+            opt.value = ch;
+            opt.textContent = `Kanal ${ch} ${ch === 10 ? '(Standard Drums)' : ''}`;
+            if (ch === 10) opt.selected = true;
+            channelSelect.appendChild(opt);
+        });
+
+        if (!foundChannels.has(10)) {
+            channelSelect.value = sortedChannels[0];
+        }
+
+        analysisSection.style.display = 'block';
+        filterNotesByChannel();
+        // filepath: /Users/erichheinemann/Documents/taktwerk/taktwerkeditor/taktwerk_editor.html
+        tempoInput.value = Math.round(playbackTempoBpm);
+        midiTempoDisplay.textContent =
+            `MIDI-Tempo: ${midiTempoBpm.toFixed(2)} BPM`;
+
+    }
+
+    function filterNotesByChannel() {
+        const targetChannel = parseInt(channelSelect.value);
+        selectedChannelNotes = extractedNotes.filter(n => n.channel === targetChannel);
+
+        groupNotesByMeasure();
+        renderMeasures();
+    }
+
+    function groupNotesByMeasure() {
+        measuresMap = {};
+        selectedMeasures.clear();
+
+        selectedChannelNotes.forEach(note => {
+            const measureIdx = Math.floor(note.tick / ticksPerMeasure) + 1;
+            if (!measuresMap[measureIdx]) {
+                measuresMap[measureIdx] = [];
+            }
+            measuresMap[measureIdx].push(note);
+        });
+    }
+
+function renderMeasures() {
+    measuresGrid.innerHTML = '';
+    const measureIndices = Object.keys(measuresMap).map(Number);
+    
+    if (measureIndices.length === 0) {
+        measuresGrid.innerHTML = '<p class="info-text">Keine Noten auf dem gewählten Kanal vorhanden.</p>';
+        return;
+    }
+
+    const maxMeasure = Math.max(...measureIndices);
+
+    for (let i = 1; i <= maxMeasure; i++) {
+        const card = document.createElement('div');
+        card.className = 'measure-card';
+        const noteCount = measuresMap[i] ? measuresMap[i].length : 0;
+        
+        card.innerHTML = `
+            <strong>Takt ${i}</strong><br>
+            <small>${noteCount} Noten</small><br>
+            ${noteCount > 0 ? `<button class="play-btn" style="margin-top:6px; padding:2px 8px; font-size:0.8em;" onclick="event.stopPropagation(); playMeasure(${i});">▶ Play</button>` : ''}
+        `;
+
+        if (noteCount > 0) {
+            card.addEventListener('click', () => toggleMeasureSelection(i, card));
+        } else {
+            card.style.opacity = '0.3';
+            card.style.cursor = 'default';
+        }
+
+        measuresGrid.appendChild(card);
+    }
+}
+
+// ...existing code...
+
+    function renderDrumGrid(measureIdx) {
+        const notes = measuresMap[measureIdx] || [];
+
+        if (notes.length === 0) {
+            displayedDrumMeasure = null;
+            stopGridLoop();
+            drumGridPanel.style.display = 'none';
+            return;
+        }
+
+        displayedDrumMeasure = measureIdx;
+        drumGridPanel.style.display = 'block';
+        drumGridTitle.textContent = `Drum Grid – Takt ${measureIdx}`;
+        drumGrid.innerHTML = '';
+
+        const mainSteps = 16;
+        const subdivisionsPerStep = 4;
+        const gridColumns = mainSteps * subdivisionsPerStep;
+        const subdivisionTicks = ticksPerMeasure / gridColumns;
+        const noteNumbers = [...new Set(notes.map(note => note.noteNumber))]
+            .sort((a, b) => a - b);
+
+        const addCell = (text, className = '', contextMenuHandler = null,
+            clickHandler = null, title = '') => {
+            const cell = document.createElement('div');
+            cell.className = `drum-grid-cell ${className}`;
+            cell.textContent = text;
+            cell.title = title;
+            if (contextMenuHandler) cell.addEventListener('contextmenu', contextMenuHandler);
+            if (clickHandler) cell.addEventListener('click', clickHandler);
+            drumGrid.appendChild(cell);
+            return cell;
+        };
+
+        addCell('Instrument', 'drum-grid-header');
+
+        for (let step = 1; step <= mainSteps; step++) {
+            addCell(String(step), 'drum-grid-header drum-grid-step-header');
+        }
+
+        noteNumbers.forEach(noteNumber => {
+            const name = drumNames[noteNumber] || `MIDI ${noteNumber}`;
+            addCell(name, 'drum-grid-label', event =>
+                openDrumContextMenu(event, measureIdx, noteNumber, 0, null)
+            );
+
+            for (let subdivision = 0; subdivision < gridColumns; subdivision++) {
+                const stepStart =
+                    (measureIdx - 1) * ticksPerMeasure + subdivision * subdivisionTicks;
+                const stepEnd = stepStart + subdivisionTicks;
+
+                const hits = notes.filter(note =>
+                    note.noteNumber === noteNumber &&
+                    note.tick >= stepStart &&
+                    note.tick < stepEnd
+                );
+
+                if (hits.length > 0) {
+                    const hit = hits.reduce((loudest, current) =>
+                        current.velocity > loudest.velocity ? current : loudest
+                    );
+                    const velocity = hit.velocity;
+                    const majorClass = subdivision % subdivisionsPerStep === 0
+                        ? ' drum-grid-major'
+                        : '';
+                    addCell('', `drum-grid-hit ${getVelocityClass(velocity)}${majorClass}`,
+                        event => openDrumContextMenu(
+                            event, measureIdx, noteNumber, subdivision, hit
+                        ),
+                        () => playDrumGridNote(hit),
+                        `${drumNames[noteNumber] || `MIDI ${noteNumber}`} - Velocity ${velocity}`
+                    );
+                } else {
+                    const majorClass = subdivision % subdivisionsPerStep === 0
+                        ? ' drum-grid-major'
+                        : '';
+                    addCell('', majorClass, event =>
+                        openDrumContextMenu(event, measureIdx, noteNumber, subdivision, null)
+                    );
+                }
+            }
+        });
+    }
+
+// ...existing code...
+
+function toggleMeasureSelection(measureIdx, cardElement) {
+    if (selectedMeasures.has(measureIdx)) {
+        selectedMeasures.delete(measureIdx);
+        cardElement.classList.remove('selected');
+
+        if (selectedMeasures.size === 0) {
+            drumGridPanel.style.display = 'none';
+        }
+    } else {
+        selectedMeasures.add(measureIdx);
+        cardElement.classList.add('selected');
+
+        // Show the grid for the selected bar
+        renderDrumGrid(measureIdx);
+    }
+}
+
+function exportSelectedMeasures() {
+    if (selectedMeasures.size === 0) {
+        alert("Bitte wähle mindestens einen Takt aus!");
+        return;
+    }
+
+    // IMMER Kanal 10 erzwingen (MIDI-Kanal 10 ist im Byte-Array der Index 9 / 0x09)
+    const exportChannel = 9; 
+    const sortedMeasures = Array.from(selectedMeasures).sort((a, b) => a - b);
+    
+    let events = [];
+    let currentWriteTick = 0;
+
+    sortedMeasures.forEach(mIdx => {
+        const startTickOfMeasure = (mIdx - 1) * ticksPerMeasure;
+        const notesInMeasure = measuresMap[mIdx] || [];
+
+        notesInMeasure.forEach(note => {
+            const offsetInMeasure = note.tick - startTickOfMeasure;
+            const newStartTick = currentWriteTick + offsetInMeasure;
+
+            // Note On (0x90) + Kanal 10 (0x09) = 0x99
+            events.push({ 
+                tick: newStartTick, 
+                type: 0x90 | exportChannel, 
+                note: note.noteNumber, 
+                vel: note.velocity 
+            });
+
+            // Note Off (0x80) + Kanal 10 (0x09) = 0x89
+            events.push({ 
+                tick: newStartTick + (timeDivision / 4), 
+                type: 0x80 | exportChannel, 
+                note: note.noteNumber, 
+                vel: 0 
+            });
+        });
+
+        currentWriteTick += ticksPerMeasure;
+    });
+
+    events.sort((a, b) => a.tick - b.tick);
+
+    let trackBytes = [];
+    let lastTick = 0;
+
+    events.forEach(e => {
+        let delta = e.tick - lastTick;
+        lastTick = e.tick;
+        
+        writeVarLength(delta, trackBytes);
+        trackBytes.push(e.type, e.note, e.vel);
+    });
+
+    // End of Track Event
+    writeVarLength(0, trackBytes);
+    trackBytes.push(0xFF, 0x2F, 0x00);
+
+    // Header für Format 0 MIDI-Datei
+    const header = [
+        0x4D, 0x54, 0x68, 0x64, // MThd
+        0x00, 0x00, 0x00, 0x06, // Header-Länge
+        0x00, 0x00,             // Format 0
+        0x00, 0x01,             // 1 Track
+        (timeDivision >> 8) & 0xFF, timeDivision & 0xFF // PPQN
+    ];
+
+    const trackHeader = [
+        0x4D, 0x54, 0x72, 0x6B, // MTrk
+        (trackBytes.length >> 24) & 0xFF,
+        (trackBytes.length >> 16) & 0xFF,
+        (trackBytes.length >> 8) & 0xFF,
+        trackBytes.length & 0xFF
+    ];
+
+    const fullMidi = new Uint8Array([...header, ...trackHeader, ...trackBytes]);
+
+    // Download auslösen
+    const type = document.querySelector('input[name="fileType"]:checked').value;
+    const num = document.getElementById('fileNumber').value;
+    const blob = new Blob([fullMidi], { type: 'audio/midi' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${type}-${num}.mid`;
+    link.click();
+}
+
+    function writeVarLength(val, arr) {
+        let buffer = val & 0x7F;
+        while ((val >>= 7) > 0) {
+            buffer <<= 8;
+            buffer |= (val & 0x7F) | 0x80;
+        }
+        while (true) {
+            arr.push(buffer & 0xFF);
+            if (buffer & 0x80) buffer >>= 8;
+            else break;
+        }
+    }
+</script>
+
+</body>
+</html>
