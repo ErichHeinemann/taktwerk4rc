@@ -21,16 +21,16 @@ Adafruit_SSD1306.h
 Adafruit_NeoPixel.h
 
 Wiring:
-Module            Signal    ESP32-S3 GPIO   Description
-I2C OLED (SSD1306)  SDA     GPIO 8          Standard I2C Data
-                    SCL     GPIO 9          Standard I2C Clock
-SPI         SD-Card CS      GPIO 10         Chip Select
-                    MOSI    GPIO 11         SPI Master Out
-                    SCK     GPIO 12         SPI Clock
-                    MISO    GPIO 13         SPI Master In
-Keys (Navi)     Song Next   GPIO 4          Internal Pullup (Button closes to GND)
-                Song Prev   GPIO 5          Internal Pullup (Button closes to GND)
-Footswitch  Start / Stop    GPIO 6          Internal Pullup (Button closes to GND)
+Module            Signal    ESP32-S3 GPIO   Description</br>
+I2C OLED (SSD1306)  SDA     GPIO 8          Standard I2C Data</br>
+                    SCL     GPIO 9          Standard I2C Clock</br>
+SPI         SD-Card CS      GPIO 10         Chip Select</br>
+                    MOSI    GPIO 11         SPI Master Out</br>
+                    SCK     GPIO 12         SPI Clock</br>
+                    MISO    GPIO 13         SPI Master In</br>
+Keys (Navi)     Song Next   GPIO 4          Internal Pullup (Button closes to GND)</br>
+                Song Prev   GPIO 5          Internal Pullup (Button closes to GND)</br>
+Footswitch  Start / Stop    GPIO 6          Internal Pullup (Button closes to GND)</br>
             Fill Trigger    GPIO 7          Internal Pullup (Button closes to GND)
             Quiet (50% Vol) GPIO 15         Internal Pullup (Button closes to GND)
 USB Host  D- / D+           GPIO 19 / 20    reserved für RC-600 USB-HOST
