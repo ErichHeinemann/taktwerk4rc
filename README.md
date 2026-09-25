@@ -11,30 +11,33 @@ search for Line (452):   #define SD_FAT_TYPE 0
 Change 0 into e 3:   #define SD_FAT_TYPE 3
 Save it...
 
-used Libraries:
-MD_MIDIFile by MajicDesigns
-EspUsbHost  Download from >> https://github.com/tanakamasayuki/EspUsbHostSPI.h
-SD.h
-Wire.h
-Adafruit_GFX.h
-Adafruit_SSD1306.h
-Adafruit_NeoPixel.h
+used Libraries:<br>
+MD_MIDIFile by MajicDesigns<br>
+EspUsbHost  Download from >> https://github.com/tanakamasayuki/EspUsbHost<br>
+SPI.h <br>
+SD.h<br>
+Wire.h<br>
+Adafruit_GFX.h<br>
+Adafruit_SSD1306.h<br>
+Adafruit_NeoPixel.h<br>
 
 Wiring:
-Module            Signal    ESP32-S3 GPIO   Description</br>
-I2C OLED (SSD1306)  SDA     GPIO 8          Standard I2C Data</br>
-                    SCL     GPIO 9          Standard I2C Clock</br>
-SPI         SD-Card CS      GPIO 10         Chip Select</br>
-                    MOSI    GPIO 11         SPI Master Out</br>
-                    SCK     GPIO 12         SPI Clock</br>
-                    MISO    GPIO 13         SPI Master In</br>
-Keys (Navi)     Song Next   GPIO 4          Internal Pullup (Button closes to GND)</br>
-                Song Prev   GPIO 5          Internal Pullup (Button closes to GND)</br>
-Footswitch  Start / Stop    GPIO 6          Internal Pullup (Button closes to GND)</br>
-            Fill Trigger    GPIO 7          Internal Pullup (Button closes to GND)
-            Quiet (50% Vol) GPIO 15         Internal Pullup (Button closes to GND)
-USB Host  D- / D+           GPIO 19 / 20    reserved für RC-600 USB-HOST
-NeoPixel LED  DATA          GPIO 48         Onboard LED / Metronom
+<table>
+<tr><th>Module    </th><th>       Signal  </th><th>  ESP32-S3 GPIO  </th><th> Description </th></tr>
+<tr><td> I2C OLED (SSD1306) </td><td> SDA  </td><td>   GPIO 8   </td><td>       Standard I2C Data </td></tr>
+<tr><td> I2C OLED (SSD1306) </td><td>  SCL  </td><td>   GPIO 9   </td><td>       Standard I2C Clock </td></tr>
+<tr><td> SPI SD-Card        </td><td> CS    </td><td>    GPIO 10    </td><td>      Chip Select </td></tr>
+<tr><td> SPI SD-Card        </td><td> MOSI  </td><td>   GPIO 11     </td><td>     SPI Master Out </td></tr>
+<tr><td> SPI SD-Card        </td><td> SCK   </td><td>   GPIO 12      </td><td>    SPI Clock </td></tr>
+<tr><td> SPI SD-Card        </td><td>  MISO  </td><td>   GPIO 13      </td><td>    SPI Master In </td></tr>
+<tr><td> Keys (Navi)        </td><td> Song Next </td><td>  GPIO 4   </td><td>        Internal Pullup (Button closes to GND) </td></tr>
+<tr><td> Keys (NAVI)        </td><td> Song Prev </td><td>   GPIO 5    </td><td>       Internal Pullup (Button closes to GND)</td></tr>
+<tr><td> Footswitch         </td><td> Start / Stop  </td><td>   GPIO 6      </td><td>     Internal Pullup (Button closes to GND)</td></tr>
+<tr><td> Footswitch         </td><td> Fill Trigger   </td><td>  GPIO 7    </td><td>       Internal Pullup (Button closes to GND)</td></tr>
+<tr><td> Footswitch         </td><td> Quiet (50% Vol) </td><td> GPIO 15    </td><td>      Internal Pullup (Button closes to GND)</td></tr>
+<tr><td> USB Host           </td><td> D- / D+    </td><td>       GPIO 19 / 20  </td><td>  reserved für RC-600 USB-HOST</td></tr>
+<tr><td> NeoPixel           </td><td> LED  DATA   </td><td>       GPIO 48      </td><td>   Onboard LED / Metronom</td></tr>
+</table>
 
 !! NEEDED Modifications on the ESp32-S3-Hardware !!!
 close or bridge the PADS USB-OTG under the board to enable the USB-OTG-Function
